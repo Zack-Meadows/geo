@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GEO</title>
+    <style>
+        :root {
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-color: #1e293b;
+            --border-color: #cbd5e1;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --success: #16a34a;
+            --success-hover: #15803d;
+            --table-stripe: #f1f5f9;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 1rem;
+            box-sizing: border-box;
+            background-color: #fff;
+        }
+
+        /* Remove spin arrows for Chrome, Safari, Edge, Opera */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        /* Remove spin arrows for Firefox */
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .row {
+            display: flex;
+            gap: 16px;
+        }
+
+        .row .form-group {
+            flex: 1;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .btn {
+            flex: 1;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-export {
+            background-color: var(--primary);
+        }
+        .btn-export:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-copy {
+            background-color: var(--success);
+        }
+        .btn-copy:hover {
+            background-color: var(--success-hover);
+        }
+
+        .table-container {
+            margin-top: 24px;
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background-color: var(--table-stripe);
+            position: sticky;
+            top: 0;
+            z-index: 1;
+            font-weight: 600;
+        }
+
+        tr:nth-child(even) td {
+            background-color: #fdfdfd;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>GEO</h1>
+        
+        <div class="row">
+            <div class="form-group">
+                <label for="lat">Center Latitude</label>
+                <input type="number" id="lat" step="any" placeholder="e.g. 37.7749" oninput="calculateBoundary()">
+            </div>
+            <div class="form-group">
+                <label for="lon">Center Longitude</label>
+                <input type="number" id="lon" step="any" placeholder="e.g. -122.4194" oninput="calculateBoundary()">
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="form-group">
+                <label for="radius">Radius</label>
+                <input type="number" id="radius" step="any" placeholder="e.g. 5" oninput="calculateBoundary()">
+            </div>
+            <div class="form-group">
+                <label for="unit">Unit</label>
+                <select id="unit" onchange="calculateBoundary()">
+                    <option value="Miles" selected>Miles</option>
+                    <option value="Kilometres">Kilometres</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table id="coord-table">
+                <thead>
+                    <tr>
+                        <th>Latitude</th>
+                        <th>Longitude</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="2" style="text-align: center; color: #64748b;">Enter coordinates and radius above</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="button-group">
+            <button class="btn btn-copy" onclick="copyTableData()">Copy Output</button>
+            <button class="btn btn-export" onclick="exportCSV()">Export to CSV</button>
+        </div>
+    </div>
+
+    <script>
+        let currentData = [];
+
+        function calculateBoundary() {
+            const latInput = document.getElementById("lat").value;
+            const lonInput = document.getElementById("lon").value;
+            const radiusInput = document.getElementById("radius").value;
+            const unit = document.getElementById("unit").value;
+
+            const tableBody = document.querySelector("#coord-table tbody");
+            tableBody.innerHTML = "";
+            currentData = [];
+
+            if (latInput === "" || lonInput === "" || radiusInput === "") {
+                tableBody.innerHTML = `<tr><td colspan="2" style="text-align: center; color: #64748b;">Enter coordinates and radius above</td></tr>`;
+                return;
+            }
+
+            const lat = parseFloat(latInput);
+            const lon = parseFloat(lonInput);
+            const radius = parseFloat(radiusInput);
+
+            const radiusKm = (unit.toLowerCase() === "miles") ? radius * 1.609344 : radius;
+            const earthRadiusKm = 6371.0;
+            const latRad = lat * (Math.PI / 180);
+            const lonRad = lon * (Math.PI / 180);
+
+            const bearings = [
+                0, 13.33, 26.67, 40, 53.33, 66.67, 80, 93.33, 106.67, 120, 
+                133.33, 146.67, 160, 173.33, 186.67, 200, 213.33, 226.67, 240, 
+                253.33, 266.67, 280, 293.33, 306.67, 320, 333.33, 346.67, 360
+            ];
+
+            bearings.forEach(deg => {
+                const bearing = deg * (Math.PI / 180);
+                const angularDistance = radiusKm / earthRadiusKm;
+                
+                const pointLatRad = Math.asin(
+                    Math.sin(latRad) * Math.cos(angularDistance) +
+                    Math.cos(latRad) * Math.sin(angularDistance) * Math.cos(bearing)
+                );
+                
+                const pointLonRad = lonRad + Math.atan2(
+                    Math.sin(bearing) * Math.sin(angularDistance) * Math.cos(latRad),
+                    Math.cos(angularDistance) - Math.sin(latRad) * Math.sin(pointLatRad)
+                );
+                
+                const pointLat = pointLatRad * (180 / Math.PI);
+                const pointLon = pointLonRad * (180 / Math.PI);
+
+                currentData.push({ lat: pointLat, lon: pointLon });
+
+                const row = document.createElement("tr");
+                row.innerHTML = `<td>${pointLat.toFixed(6)}</td><td>${pointLon.toFixed(6)}</td>`;
+                tableBody.appendChild(row);
+            });
+        }
+
+        function copyTableData() {
+            if (currentData.length === 0) {
+                alert("No data to copy!");
+                return;
+            }
+
+            let textContent = "Latitude\tLongitude\n";
+            currentData.forEach(row => {
+                textContent += `${row.lat.toFixed(6)}\t${row.lon.toFixed(6)}\n`;
+            });
+
+            navigator.clipboard.writeText(textContent).then(() => {
+                const copyBtn = document.querySelector(".btn-copy");
+                const originalText = copyBtn.innerText;
+                copyBtn.innerText = "Copied!";
+                setTimeout(() => {
+                    copyBtn.innerText = originalText;
+                }, 2000);
+            }).catch(err => {
+                alert("Failed to copy data.");
+            });
+        }
+
+        function exportCSV() {
+            if (currentData.length === 0) {
+                alert("No data to export!");
+                return;
+            }
+
+            let csvContent = "Latitude,Longitude\n";
+            currentData.forEach(row => {
+                csvContent += `${row.lat},${row.lon}\n`;
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", "geo_boundaries.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    </script>
+</body>
+</html>
